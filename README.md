@@ -6,7 +6,7 @@ python
 chromedriverの場所をフルパスで設定  
 自分のインスタIDとパスワードを直書き  
 inst_listにほしい人のインスタIDをリストで書く  
-run.pyを実行  
+run.bat(python run.py)を実行  
   
   
 # selenium
@@ -16,3 +16,5 @@ run.pyを実行
 https://sites.google.com/a/chromium.org/chromedriver/downloads
 
 
+# 参考
+https://qiita.com/ekkyu/items/1571b6176f7a330ae9f0

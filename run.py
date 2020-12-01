@@ -1,6 +1,7 @@
 #! python 
 # -*- coding: utf-8 -*-
 
+import os
 import re
 import json
 import requests
@@ -13,11 +14,9 @@ from selenium.webdriver.common.keys import Keys
 class InstaImgCollector:
 
     def __init__(self):
+        self.fast_mode = False # 1ページだけ実行するならTrue。全取得ならFalse
         self.img_code_list = []
         self.img_url_list = []
-        self.img_video_list = []
-        self.window_width = 0
-        self.window_height = 0
         self.options = webdriver.ChromeOptions()
         self.options.add_argument('--no-sandbox')
         # chromedriverの場所設定
@@ -50,7 +49,7 @@ class InstaImgCollector:
 
     def return_code_pattern(self):
         html_source = self.driver.page_source
-        pattern = '"shortcode":".*?","'
+        pattern = '><a href="/p/(.*?)/"'
         results = re.findall(pattern, html_source, re.S)
         return results
 
@@ -80,47 +79,69 @@ class InstaImgCollector:
                         self.img_url_list.append(new_url)
         url_list = self.return_video_pattern()
         for strmp4 in url_list:
-            strmp4 = self.right(strmp4,len(strmp4)-12)
-            strmp4 = self.left(strmp4,len(strmp4)-1)
-            strmp4 = strmp4.replace("\\u0026","&")
-            if strmp4 not in self.img_url_list:
-                new_url = strmp4
-                self.img_url_list.append(new_url)
+            if (len(strmp4)<580):
+                strmp4 = self.right(strmp4,len(strmp4)-12)
+                strmp4 = self.left(strmp4,len(strmp4)-1)
+                strmp4 = strmp4.replace("\\u0026","&")
+                if strmp4 not in self.img_url_list:
+                    new_url = strmp4
+                    self.img_url_list.append(new_url)
         return self.img_url_list
 
     def fetch_code_url(self, target_username):
         url = "https://www.instagram.com/{}".format(target_username)
         self.driver.get(url)
-        sleep(1)
-        code_list = self.return_code_pattern()
+        self.driver.maximize_window()
         # 過去にやったcodeを取得
         log_list = self.read_code_log()
-        for i in code_list:
-            if self.mid(i,14,11) not in self.img_code_list:
-                code_id = self.mid(i,14,11)
-                # 過去にやったcodeは除外する
-                if code_id + '\n' in log_list:
-                    continue
-                self.img_code_list.append(code_id)
-                self.write_code_log(code_id)
+        if self.fast_mode:
+            sleep(1)
+            code_list = self.return_code_pattern()
+            for code_id in code_list:
+                if code_id not in self.img_code_list:
+                    # 過去にやったcodeは除外する
+                    if code_id + '\n' in log_list:
+                        continue
+                    self.img_code_list.append(code_id)
+                    self.write_code_log(code_id)
+        else:
+            for i in range(60):
+                sleep(1)
+                # i x 10000px スクロール
+                self.driver.execute_script('window.scrollTo(0, '+ str(i) +'0000);')
+                sleep(1)
+                code_list = self.return_code_pattern()
+                for code_id in code_list:
+                    if code_id not in self.img_code_list:
+                        # 過去にやったcodeは除外する
+                        if code_id + '\n' in log_list:
+                            continue
+                        self.img_code_list.append(code_id)
+                        self.write_code_log(code_id)
 
         return self.img_code_list
 
     def download_img(self, url, save_file_path):
-        urllib.request.urlretrieve(url, save_file_path)
+        r = requests.get(url, stream=True)
+        if r.status_code == 200:
+            urllib.request.urlretrieve(url, save_file_path)
 
     def get_post_url_from_id(self, id_):
         self.img_url_list = self.fetch_img_url(target_code=id_)
 
     def get_code_id_from_id(self, id_):
-        self.login()
         # codeIDの一覧を取得
         self.img_code_list = self.fetch_code_url(target_username=id_)
         for code_id in self.img_code_list:
             self.get_post_url_from_id(code_id)
-
-        self.driver.quit()
         return self.img_url_list
+
+    def quit(self):
+        self.driver.quit()
+
+    def clear(self):
+        self.img_code_list = []
+        self.img_url_list = []
 
     def write_code_log(self, txt):
         path = 'log/getcode.log'
@@ -138,14 +159,19 @@ if __name__ == '__main__':
     # 取得したい人のインスタIDのリスト
     inst_list = ['aaaaa','bbbbb','ddddd','eeeee','cccccc']
     iic = InstaImgCollector()
+    iic.login()
     for inst_id in inst_list:
+        # フォルダ作成
+        os.makedirs('data/' + inst_id ,exist_ok=True)
         url_list = iic.get_code_id_from_id(inst_id)
+        iic.clear()
         for url_i in url_list:
-            m = re.match(r'.*jpg',url_i)
+            m = re.search(r'/([0-9]+.*jpg)',url_i)
             if m:
-                file_name = 'data/' + inst_id+ '/' + iic.right(m.group(),51)
+                file_name = 'data/' + inst_id + m.group()
                 iic.download_img(url_i, file_name)
-            m = re.match(r'.*mp4',url_i)
+            m = re.search(r'/([0-9]+.*mp4)',url_i)
             if m:
-                file_name = 'data/' + inst_id+ '/' + iic.right(m.group(),51)
+                file_name = 'data/' + inst_id + m.group()
                 iic.download_img(url_i, file_name)
+    iic.quit()
