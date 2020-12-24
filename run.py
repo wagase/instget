@@ -70,7 +70,7 @@ class InstaImgCollector:
         self.driver.get(url)
         url_list = self.return_img_pattern()
         for strjpg in url_list:
-            if (len(strjpg)<580):
+            if (len(strjpg)<250):
                 strjpg = strjpg.replace("\\u0026","&")
                 strjpg = self.left(strjpg,len(strjpg)-16)
                 if ("/e35/" in strjpg) & ("640x640" not in strjpg) & ("750x750" not in strjpg):
@@ -79,7 +79,7 @@ class InstaImgCollector:
                         self.img_url_list.append(new_url)
         url_list = self.return_video_pattern()
         for strmp4 in url_list:
-            if (len(strmp4)<580):
+            if (len(strmp4)<250):
                 strmp4 = self.right(strmp4,len(strmp4)-12)
                 strmp4 = self.left(strmp4,len(strmp4)-1)
                 strmp4 = strmp4.replace("\\u0026","&")
