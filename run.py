@@ -37,7 +37,7 @@ class InstaImgCollector:
 
     def return_img_pattern(self):
         html_source = self.driver.page_source
-        pattern = 'https:\/\/scontent-.*?\.jpg.*?","config_width"'
+        pattern = 'https:\/\/scontent-.*?\.jpg.*?"'
         results = re.findall(pattern, html_source, re.S)
         return results
 
@@ -70,16 +70,16 @@ class InstaImgCollector:
         self.driver.get(url)
         url_list = self.return_img_pattern()
         for strjpg in url_list:
-            if (len(strjpg)<330):
+            if (len(strjpg)<590):
                 strjpg = strjpg.replace("\\u0026","&")
                 strjpg = self.left(strjpg,len(strjpg)-16)
-                if ("/e35/" in strjpg) & ("640x640" not in strjpg) & ("750x750" not in strjpg):
+                if ("150x150" not in strjpg) & ("240x240" not in strjpg) & ("240x240" not in strjpg)  & ("320x320" not in strjpg) & ("480x480" not in strjpg)  & ("640x640" not in strjpg) & ("750x750" not in strjpg):
                     if strjpg not in self.img_url_list:
                         new_url = strjpg
                         self.img_url_list.append(new_url)
         url_list = self.return_video_pattern()
         for strmp4 in url_list:
-            if (len(strmp4)<330):
+            if (len(strmp4)<590):
                 strmp4 = self.right(strmp4,len(strmp4)-12)
                 strmp4 = self.left(strmp4,len(strmp4)-1)
                 strmp4 = strmp4.replace("\\u0026","&")
@@ -95,7 +95,7 @@ class InstaImgCollector:
         # 過去にやったcodeを取得
         log_list = self.read_code_log()
         if self.fast_mode:
-            sleep(1)
+            sleep(7)
             code_list = self.return_code_pattern()
             for code_id in code_list:
                 if code_id not in self.img_code_list:
@@ -166,12 +166,14 @@ if __name__ == '__main__':
         url_list = iic.get_code_id_from_id(inst_id)
         iic.clear()
         for url_i in url_list:
-            m = re.search(r'/([0-9]+.*jpg)',url_i)
+            m = re.search(r'/([0-9]+.*n.jpg)',url_i)
             if m:
                 file_name = 'data/' + inst_id + m.group()
-                iic.download_img(url_i, file_name)
+                if (len(file_name) < 95) & ("?" not in file_name):
+                    iic.download_img(url_i, file_name)
             m = re.search(r'/([0-9]+.*mp4)',url_i)
             if m:
                 file_name = 'data/' + inst_id + m.group()
-                iic.download_img(url_i, file_name)
+                if (len(file_name) < 95 ) & ("?" not in file_name):
+                    iic.download_img(url_i, file_name)
     iic.quit()
